@@ -2,9 +2,11 @@ package com.indemnity83.irontank.block;
 
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
@@ -26,67 +28,83 @@ import buildcraft.factory.BlockTank;
 
 public class BlockExtendedTank extends BlockTank {
 
-	private IIcon textureStackedSide;
+    /**
+     * TankType of this block
+     */
+    public final TankType type;
+    private IIcon textureStackedSide;
 
-	/**
-	 * TankType of this block
-	 */
-	public final TankType type;
+    public BlockExtendedTank(TankType type) {
+        super();
 
-	public BlockExtendedTank(TankType type) {
-		super();
+        this.type = type;
 
-		this.type = type;
+        this.setBlockName(type.name);
+        this.setCreativeTab(IronTankTabs.MainTab);
+        this.setResistance(type.resistance);
+    }
 
-		this.setBlockName(type.name);
-		this.setCreativeTab(IronTankTabs.MainTab);
-		this.setResistance(type.resistance);
-	}
+    public TileEntity createNewTileEntity(World world, int metadata) {
+        TileIronTank tile = new TileIronTank(this.type);
+        return tile;
+    }
 
-	public TileEntity createNewTileEntity(World world, int metadata) {
-		TileIronTank tile = new TileIronTank(this.type);
-		return tile;
-	}
+    @SideOnly(Side.CLIENT)
+    public void registerBlockIcons(IIconRegister par1IconRegister) {
+        super.registerBlockIcons(par1IconRegister);
+        textureStackedSide = par1IconRegister.registerIcon("irontank:" + type.name + "/side_stacked");
+    }
 
-	@SideOnly(Side.CLIENT)
-	public void registerBlockIcons(IIconRegister par1IconRegister) {
-		super.registerBlockIcons(par1IconRegister);
-		textureStackedSide = par1IconRegister.registerIcon("irontank:" + type.name + "/side_stacked");
-	}
-	
-	@SuppressWarnings({"all"})
-	@Override
-	public IIcon getIconAbsolute(IBlockAccess iblockaccess, int i, int j, int k, int side, int metadata) {
-		if (side >= 2 && iblockaccess.getBlock(i, j - 1, k) instanceof BlockTank) {
-			return textureStackedSide;
-		} else {
-			return super.getIconAbsolute(side, metadata);
-		}
-	}
+    @SuppressWarnings({"all"})
+    @Override
+    public IIcon getIconAbsolute(IBlockAccess iblockaccess, int i, int j, int k, int side, int metadata) {
+        if (side >= 2 && iblockaccess.getBlock(i, j - 1, k) instanceof BlockTank) {
+            return textureStackedSide;
+        } else {
+            return super.getIconAbsolute(side, metadata);
+        }
+    }
 
-	public void addRecipe() {
-		for (String recipe : type.recipes) {
-			String[] recipeSplit = new String[] { recipe.substring(0, 3), recipe.substring(3, 6),
-					recipe.substring(6, 9) };
-			for (String material : type.materials) {
-				Object targetMaterial = MaterialHelper.translateOreName(material);
-				GameRegistry.addRecipe(new ShapedOreRecipe(new ItemStack(this), recipeSplit, 't', targetMaterial, 'g',
-						"blockGlass", '0', new ItemStack(BuildCraftFactory.tankBlock, 1), '1',
-						new ItemStack(ModBlocks.ironTank, 1), '2', new ItemStack(ModBlocks.goldTank, 1), '3',
-						new ItemStack(ModBlocks.diamondTank, 1), '4', new ItemStack(ModBlocks.copperTank, 1), '5',
-						new ItemStack(ModBlocks.silverTank, 1), '6', new ItemStack(ModBlocks.obsidianTank, 1)));
-			}
-		}
-	}
+    public void addRecipe() {
+        for (String recipe : type.recipes) {
+            String[] recipeSplit = new String[]{recipe.substring(0, 3), recipe.substring(3, 6),
+                    recipe.substring(6, 9)};
+            for (String material : type.materials) {
+                Object targetMaterial = MaterialHelper.translateOreName(material);
+                GameRegistry.addRecipe(new ShapedOreRecipe(new ItemStack(this), recipeSplit, 't', targetMaterial, 'g',
+                        "blockGlass", '0', new ItemStack(BuildCraftFactory.tankBlock, 1), '1',
+                        new ItemStack(ModBlocks.ironTank, 1), '2', new ItemStack(ModBlocks.goldTank, 1), '3',
+                        new ItemStack(ModBlocks.diamondTank, 1), '4', new ItemStack(ModBlocks.copperTank, 1), '5',
+                        new ItemStack(ModBlocks.silverTank, 1), '6', new ItemStack(ModBlocks.obsidianTank, 1)));
+            }
+        }
+    }
 
-	@Override
-	public String getUnlocalizedName() {
-		return String.format("tile.%s%s", Reference.MODID.toLowerCase() + ":",
-				getUnwrappedUnlocalizedName(super.getUnlocalizedName()));
-	}
+    @Override
+    public String getUnlocalizedName() {
+        return String.format("tile.%s%s", Reference.MODID.toLowerCase() + ":",
+                getUnwrappedUnlocalizedName(super.getUnlocalizedName()));
+    }
 
-	protected String getUnwrappedUnlocalizedName(String unlocalizedName) {
-		return unlocalizedName.substring(unlocalizedName.indexOf(".") + 1);
-	}
+    protected String getUnwrappedUnlocalizedName(String unlocalizedName) {
+        return unlocalizedName.substring(unlocalizedName.indexOf(".") + 1);
+    }
 
+    @Override
+    public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {
+        if (player.isSneaking()) {
+            TileEntity tileEntity = world.getTileEntity(x, y, z);
+            if (tileEntity instanceof TileIronTank) {
+                TileIronTank tank = (TileIronTank) tileEntity;
+                if (tank.isLocked()) {
+                    tank.unlock();
+                    player.addChatComponentMessage(new ChatComponentText("Tank unlocked"));
+                } else {
+                    tank.lock();
+                    player.addChatComponentMessage(new ChatComponentText("Tank locked"));
+                }
+            }
+        }
+        return super.onBlockActivated(world, x, y, z, player, par6, par7, par8, par9);
+    }
 }
